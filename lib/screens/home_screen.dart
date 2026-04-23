@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/app_logger.dart';
 import '../core/utils/time_formatter.dart';
 import '../features/auth/presentation/viewmodels/auth_view_model.dart';
 import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
@@ -18,7 +19,24 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _searchController = TextEditingController();
   String _query = '';
+  bool _hasShownUserNotFound = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _applySearch() {
+    final normalized = _searchController.text.trim().toLowerCase();
+    AppLogger.info('home_screen', 'Search button pressed. query="$normalized"');
+    setState(() {
+      _query = normalized;
+      _hasShownUserNotFound = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,17 +57,74 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: TextField(
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search members or chats'),
-              onChanged: (value) => setState(() => _query = value.toLowerCase()),
+              controller: _searchController,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search members or chats',
+                suffixIcon: IconButton(
+                  onPressed: _applySearch,
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Search',
+                ),
+              ),
+              onChanged: (value) {
+                final normalized = value.toLowerCase();
+                AppLogger.info('home_screen', 'Search field changed. raw="$value", normalized="$normalized"');
+              },
+              onSubmitted: (_) => _applySearch(),
             ),
           ),
           Expanded(
-            child: membersState.when(
-              data: (members) => chatsState.when(
-                data: (chats) {
-                  final filteredMembers = members.where((m) => m.displayName.toLowerCase().contains(_query) || m.email.toLowerCase().contains(_query)).toList();
-                  final filteredChats = chats.where((c) => c.lastMessage.toLowerCase().contains(_query)).toList();
-                  return ListView(children: [
+            child: Builder(
+              builder: (context) {
+                final members = membersState.valueOrNull ?? const <AppUser>[];
+                final chats = chatsState.valueOrNull ?? const <ChatThread>[];
+
+                final isLoading = membersState.isLoading && chatsState.isLoading;
+                if (isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final filteredMembers = members.where((m) => m.displayName.toLowerCase().contains(_query) || m.email.toLowerCase().contains(_query)).toList();
+                final filteredChats = chats.where((c) => c.lastMessage.toLowerCase().contains(_query)).toList();
+                final canEvaluateNotFound = membersState.hasValue || chatsState.hasValue;
+                final showNotFound = canEvaluateNotFound && _query.trim().isNotEmpty && filteredMembers.isEmpty && filteredChats.isEmpty;
+
+                AppLogger.info(
+                  'home_screen',
+                  'Search stats query="$_query", membersTotal=${members.length}, chatsTotal=${chats.length}, '
+                  'filteredMembers=${filteredMembers.length}, filteredChats=${filteredChats.length}, '
+                  'showNotFound=$showNotFound, hasShown=$_hasShownUserNotFound',
+                );
+
+                if (showNotFound && !_hasShownUserNotFound) {
+                  _hasShownUserNotFound = true;
+                  AppLogger.info('home_screen', 'Snackbar trigger: User not found');
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('User not found')),
+                    );
+                  });
+                } else if (!showNotFound) {
+                  if (_hasShownUserNotFound) {
+                    AppLogger.info('home_screen', 'Reset user-not-found snackbar state');
+                  }
+                  _hasShownUserNotFound = false;
+                }
+
+                return ListView(
+                  children: [
+                    if (membersState.hasError)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        child: Text('Could not load some members right now.'),
+                      ),
+                    if (chatsState.hasError)
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+                        child: Text('Could not load some chats right now.'),
+                      ),
                     if (filteredMembers.isNotEmpty) const _Header('Start new chat'),
                     ...filteredMembers.map((member) => ListTile(
                           leading: AppAvatar(name: member.displayName, photoUrl: member.photoUrl),
@@ -64,13 +139,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         )),
                     if (filteredChats.isNotEmpty) const _Header('Existing chats'),
                     ...filteredChats.map((chat) => _ChatTile(chat: chat)),
-                  ]);
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) => const Center(child: Text('Cannot load chats')),
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => const Center(child: Text('Cannot load users')),
+                  ],
+                );
+              },
             ),
           ),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/app_logger.dart';
 import '../features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'signup_screen.dart';
 
@@ -15,6 +16,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -24,11 +26,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _onLogin() async {
+    AppLogger.info('login_screen', 'Login button tapped for email=${_emailController.text.trim()}');
     setState(() => _loading = true);
     final error = await ref.read(authViewModelProvider).signIn(_emailController.text.trim(), _passwordController.text.trim());
     if (!mounted) return;
     setState(() => _loading = false);
-    if (error != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    if (error != null) {
+      AppLogger.error('login_screen', 'Login failed', error);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    AppLogger.info('login_screen', 'Login success');
   }
 
   @override
@@ -44,7 +52,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 20),
               TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
               const SizedBox(height: 12),
-              TextField(controller: _passwordController, obscureText: true, decoration: const InputDecoration(labelText: 'Password')),
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
               SizedBox(width: double.infinity, child: FilledButton(onPressed: _loading ? null : _onLogin, child: Text(_loading ? 'Loading...' : 'Login'))),
               TextButton(

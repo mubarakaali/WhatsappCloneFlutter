@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/utils/app_logger.dart';
 import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
 import '../features/chat/presentation/viewmodels/chat_view_model.dart';
 import '../models/app_user.dart';
@@ -30,13 +31,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _sendText() async {
+    AppLogger.info('chat_screen', 'Sending text to chatId=${widget.chatId}');
     await ref.read(chatViewModelProvider).sendText(widget.chatId, _messageController.text);
     _messageController.clear();
   }
 
   Future<void> _sendImage(ImageSource source) async {
+    AppLogger.info('chat_screen', 'Image picker opened for source=$source');
     final picked = await ImagePicker().pickImage(source: source);
     if (picked == null) return;
+    AppLogger.info('chat_screen', 'Image selected and sending to chatId=${widget.chatId}');
     await ref.read(chatViewModelProvider).sendImage(widget.chatId, File(picked.path));
   }
 

@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/app_logger.dart';
 import '../../../models/app_user.dart';
 import '../../../models/chat_message.dart';
 import '../../../models/chat_thread.dart';
@@ -53,6 +54,7 @@ class ChatRepository {
     final chatId = buildChatId(_currentUid, otherUserId);
     final chatRef = firestore.collection(AppConstants.chatsCollection).doc(chatId);
     final snapshot = await chatRef.get();
+    AppLogger.info('chat_repository', 'Ensuring chat exists for chatId=$chatId');
 
     // Create chat thread only once; next opens reuse same thread.
     if (!snapshot.exists) {
@@ -61,6 +63,7 @@ class ChatRepository {
         'lastMessage': 'Say hello',
         'lastMessageTime': FieldValue.serverTimestamp(),
       });
+      AppLogger.info('chat_repository', 'Created new chat thread chatId=$chatId');
     }
 
     return chatId;
@@ -76,6 +79,7 @@ class ChatRepository {
 
   Future<void> sendTextMessage({required String chatId, required String text}) async {
     if (text.trim().isEmpty) return;
+    AppLogger.info('chat_repository', 'Sending text message to chatId=$chatId');
 
     final ref = firestore.collection(AppConstants.chatsCollection).doc(chatId).collection(AppConstants.messagesSubCollection).doc();
     await ref.set({
@@ -86,10 +90,12 @@ class ChatRepository {
     });
 
     await _updateThread(chatId, text.trim());
+    AppLogger.info('chat_repository', 'Text message sent and thread preview updated for chatId=$chatId');
   }
 
   Future<void> sendImageMessage({required String chatId, required File imageFile}) async {
     // Upload image first, then save only its URL inside message document.
+    AppLogger.info('chat_repository', 'Uploading image message for chatId=$chatId');
     final imageRef = storage.ref('chat_images/$chatId/${DateTime.now().millisecondsSinceEpoch}.jpg');
     await imageRef.putFile(imageFile);
     final imageUrl = await imageRef.getDownloadURL();
@@ -103,6 +109,7 @@ class ChatRepository {
     });
 
     await _updateThread(chatId, 'Image');
+    AppLogger.info('chat_repository', 'Image message sent and thread preview updated for chatId=$chatId');
   }
 
   Future<void> _updateThread(String chatId, String preview) => firestore.collection(AppConstants.chatsCollection).doc(chatId).set({
