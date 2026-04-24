@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 import '../core/theme/whatsapp_palette.dart';
 import '../core/utils/app_logger.dart';
@@ -31,10 +33,22 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _messageController = TextEditingController();
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false;
+  DateTime? _recordingStartedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatViewModelProvider).markChatRead(widget.chatId);
+    });
+  }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -50,6 +64,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (picked == null) return;
     AppLogger.info('chat_screen', 'Image selected and sending to chatId=${widget.chatId}');
     await ref.read(chatViewModelProvider).sendImage(widget.chatId, File(picked.path));
+  }
+
+  Future<void> _startRecording() async {
+    if (_isRecording) return;
+    final hasPermission = await _recorder.hasPermission();
+    if (!hasPermission) return;
+    final tempDir = await getTemporaryDirectory();
+    final filePath = '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000, sampleRate: 44100),
+      path: filePath,
+    );
+    if (!mounted) return;
+    setState(() {
+      _isRecording = true;
+      _recordingStartedAt = DateTime.now();
+    });
+  }
+
+  Future<void> _stopRecordingAndSend() async {
+    if (!_isRecording) return;
+    final path = await _recorder.stop();
+    if (!mounted) return;
+    final startedAt = _recordingStartedAt;
+    setState(() {
+      _isRecording = false;
+      _recordingStartedAt = null;
+    });
+    if (path == null) return;
+    final durationMs = startedAt == null ? 0 : DateTime.now().difference(startedAt).inMilliseconds;
+    await ref.read(chatViewModelProvider).sendAudio(widget.chatId, File(path), durationMs);
+  }
+
+  Future<void> _reactToMessage(String messageId, String emoji) async {
+    if (emoji == '✖️') {
+      await ref.read(chatViewModelProvider).removeReaction(widget.chatId, messageId);
+      return;
+    }
+    await ref.read(chatViewModelProvider).reactToMessage(widget.chatId, messageId, emoji);
   }
 
   @override
@@ -105,8 +158,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         message: message,
                         isMine: isMine,
                         compact: true,
+                        showReadTicks: true,
+                        currentUserId: myUid,
                         senderName: snapshot.data?.displayName ?? (isMine ? 'You' : widget.contactName),
                         senderPhotoUrl: snapshot.data?.photoUrl,
+                        onReactionSelected: (emoji) => _reactToMessage(message.id, emoji),
                       ),
                     );
                   },
@@ -119,6 +175,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               controller: _messageController,
               onSend: _sendText,
               onPickImage: _sendImage,
+              onStartRecording: _startRecording,
+              onStopRecording: _stopRecordingAndSend,
+              isRecording: _isRecording,
             ),
           ],
         ),

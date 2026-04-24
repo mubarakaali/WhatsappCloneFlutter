@@ -7,12 +7,18 @@ class WhatsAppInputBar extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
   final void Function(ImageSource source) onPickImage;
+  final VoidCallback onStartRecording;
+  final VoidCallback onStopRecording;
+  final bool isRecording;
 
   const WhatsAppInputBar({
     super.key,
     required this.controller,
     required this.onSend,
     required this.onPickImage,
+    required this.onStartRecording,
+    required this.onStopRecording,
+    required this.isRecording,
   });
 
   @override
@@ -72,17 +78,39 @@ class WhatsAppInputBar extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 4),
-              Material(
-                color: WhatsAppPalette.accentGreen,
-                shape: const CircleBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: onSend,
-                  child: const Padding(
-                    padding: EdgeInsets.all(10),
-                    child: Icon(Icons.send_rounded, color: Colors.white, size: 22),
-                  ),
-                ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (context, value, _) {
+                  final hasText = value.text.trim().isNotEmpty;
+                  if (hasText) {
+                    return Material(
+                      color: WhatsAppPalette.accentGreen,
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: onSend,
+                        child: const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Icon(Icons.send_rounded, color: Colors.white, size: 22),
+                        ),
+                      ),
+                    );
+                  }
+                  // Beginner note: long-press starts recording, and releasing sends the audio clip.
+                  return GestureDetector(
+                    onLongPressStart: (_) => onStartRecording(),
+                    onLongPressEnd: (_) => onStopRecording(),
+                    child: Material(
+                      color: isRecording ? Colors.redAccent : WhatsAppPalette.accentGreen,
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Icon(Icons.mic, color: Colors.white, size: 22),
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

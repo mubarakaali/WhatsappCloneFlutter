@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 import '../core/theme/whatsapp_palette.dart';
 import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
@@ -27,10 +29,14 @@ class GroupChatScreen extends ConsumerStatefulWidget {
 
 class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   final _messageController = TextEditingController();
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false;
+  DateTime? _recordingStartedAt;
 
   @override
   void dispose() {
     _messageController.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -43,6 +49,44 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
     final picked = await ImagePicker().pickImage(source: source);
     if (picked == null) return;
     await ref.read(chatViewModelProvider).sendGroupImage(widget.groupId, File(picked.path));
+  }
+
+  Future<void> _startRecording() async {
+    if (_isRecording) return;
+    if (!await _recorder.hasPermission()) return;
+    final tempDir = await getTemporaryDirectory();
+    final filePath = '${tempDir.path}/group_audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000, sampleRate: 44100),
+      path: filePath,
+    );
+    if (!mounted) return;
+    setState(() {
+      _isRecording = true;
+      _recordingStartedAt = DateTime.now();
+    });
+  }
+
+  Future<void> _stopRecordingAndSend() async {
+    if (!_isRecording) return;
+    final path = await _recorder.stop();
+    if (!mounted) return;
+    final startedAt = _recordingStartedAt;
+    setState(() {
+      _isRecording = false;
+      _recordingStartedAt = null;
+    });
+    if (path == null) return;
+    final durationMs = startedAt == null ? 0 : DateTime.now().difference(startedAt).inMilliseconds;
+    await ref.read(chatViewModelProvider).sendGroupAudio(widget.groupId, File(path), durationMs);
+  }
+
+  Future<void> _reactToMessage(String messageId, String emoji) async {
+    if (emoji == '✖️') {
+      await ref.read(chatViewModelProvider).removeGroupReaction(widget.groupId, messageId);
+      return;
+    }
+    await ref.read(chatViewModelProvider).reactToGroupMessage(widget.groupId, messageId, emoji);
   }
 
   @override
@@ -82,8 +126,10 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
                           message: message,
                           isMine: isMine,
                           compact: false,
+                        currentUserId: myUid,
                           senderName: sender?.displayName ?? (isMine ? 'You' : 'Member'),
                           senderPhotoUrl: sender?.photoUrl,
+                        onReactionSelected: (emoji) => _reactToMessage(message.id, emoji),
                         );
                       },
                     );
@@ -97,6 +143,9 @@ class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
               controller: _messageController,
               onSend: _sendText,
               onPickImage: _sendImage,
+              onStartRecording: _startRecording,
+              onStopRecording: _stopRecordingAndSend,
+              isRecording: _isRecording,
             ),
           ],
         ),

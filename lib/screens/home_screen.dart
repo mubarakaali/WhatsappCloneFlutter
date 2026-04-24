@@ -9,11 +9,14 @@ import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
 import '../models/app_user.dart';
 import '../models/chat_thread.dart';
 import '../models/group_thread.dart';
+import '../models/status_item.dart';
 import '../widgets/app_avatar.dart';
 import 'chat_screen.dart';
 import 'create_group_screen.dart';
+import 'create_status_screen.dart';
 import 'group_chat_screen.dart';
 import 'profile_screen.dart';
+import 'status_viewer_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -31,7 +34,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() => setState(() {}));
   }
 
@@ -62,6 +65,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           controller: _tabController,
           tabs: const [
             Tab(text: 'CHATS'),
+            Tab(text: 'STATUS'),
             Tab(text: 'GROUPS'),
           ],
         ),
@@ -104,7 +108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           ),
         ],
       ),
-      floatingActionButton: _tabController.index == 1
+      floatingActionButton: _tabController.index == 2
           ? FloatingActionButton(
               onPressed: () {
                 Navigator.push(
@@ -114,6 +118,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               },
               child: const Icon(Icons.group_add),
             )
+          : _tabController.index == 1
+              ? FloatingActionButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const CreateStatusScreen()),
+                    );
+                  },
+                  child: const Icon(Icons.add_a_photo_outlined),
+                )
           : FloatingActionButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -141,6 +155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               _hasShownUserNotFound = value;
             },
           ),
+          _StatusTab(isDark: isDark),
           _GroupsTab(isDark: isDark),
         ],
       ),
@@ -250,6 +265,13 @@ class _ChatsTab extends ConsumerWidget {
                       trailing: null,
                       isDark: isDark,
                       onTap: () async {
+                        if (member.id == vm.currentUid()) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('You cannot chat with yourself.')),
+                          );
+                          return;
+                        }
                         final chatId = await vm.startChatWith(member.id);
                         if (!context.mounted) return;
                         Navigator.push(
@@ -368,7 +390,7 @@ class _WaChatRow extends StatelessWidget {
   final Widget leading;
   final String title;
   final String subtitle;
-  final String? trailing;
+  final Widget? trailing;
   final bool isDark;
   final VoidCallback onTap;
 
@@ -419,14 +441,7 @@ class _WaChatRow extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailing != null)
-                  Text(
-                    trailing!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? const Color(0xFF8696A0) : WhatsAppPalette.subtitleGrey,
-                    ),
-                  ),
+                trailing ?? const SizedBox.shrink(),
               ],
             ),
           ),
@@ -460,7 +475,13 @@ class _GroupTile extends StatelessWidget {
       ),
       title: group.name,
       subtitle: group.lastMessage,
-      trailing: TimeFormatter.formatChatTime(group.lastMessageTime),
+      trailing: Text(
+        TimeFormatter.formatChatTime(group.lastMessageTime),
+        style: TextStyle(
+          fontSize: 12,
+          color: isDark ? const Color(0xFF8696A0) : WhatsAppPalette.subtitleGrey,
+        ),
+      ),
       isDark: isDark,
       onTap: () {
         Navigator.push(
@@ -498,7 +519,11 @@ class _ChatTile extends ConsumerWidget {
           leading: AppAvatar(name: name, photoUrl: user?.photoUrl, radius: 26),
           title: name,
           subtitle: chat.lastMessage,
-          trailing: TimeFormatter.formatChatTime(chat.lastMessageTime),
+          trailing: _ChatTrailing(
+            isDark: isDark,
+            timeText: TimeFormatter.formatChatTime(chat.lastMessageTime),
+            unreadCount: chat.unreadCounts[myId] ?? 0,
+          ),
           isDark: isDark,
           onTap: () => Navigator.push(
             context,
@@ -512,6 +537,127 @@ class _ChatTile extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _ChatTrailing extends StatelessWidget {
+  final bool isDark;
+  final String timeText;
+  final int unreadCount;
+
+  const _ChatTrailing({
+    required this.isDark,
+    required this.timeText,
+    required this.unreadCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final timeColor = unreadCount > 0
+        ? WhatsAppPalette.accentGreen
+        : (isDark ? const Color(0xFF8696A0) : WhatsAppPalette.subtitleGrey);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          timeText,
+          style: TextStyle(fontSize: 12, color: timeColor),
+        ),
+        const SizedBox(height: 4),
+        if (unreadCount > 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: const BoxDecoration(
+              color: WhatsAppPalette.accentGreen,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              unreadCount.toString(),
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _StatusTab extends ConsumerWidget {
+  final bool isDark;
+
+  const _StatusTab({required this.isDark});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statusesState = ref.watch(statusesProvider);
+    return statusesState.when(
+      data: (statuses) {
+        if (statuses.isEmpty) {
+          return const Center(child: Text('No active statuses'));
+        }
+        final vm = ref.watch(chatListViewModelProvider);
+        final grouped = <String, List<StatusItem>>{};
+        for (final status in statuses) {
+          grouped.putIfAbsent(status.userId, () => <StatusItem>[]).add(status);
+        }
+        final userIds = grouped.keys.toList();
+        return ListView.builder(
+          itemCount: userIds.length,
+          itemBuilder: (context, index) {
+            final uid = userIds[index];
+            final items = grouped[uid] ?? const <StatusItem>[];
+            return FutureBuilder<AppUser?>(
+              future: vm.userById(uid),
+              builder: (context, snapshot) {
+                final user = snapshot.data;
+                final title = user?.displayName ?? 'Status';
+                final subtitle = items.first.text.isNotEmpty ? items.first.text : 'Tap to view';
+                return _WaChatRow(
+                  leading: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.fromBorderSide(BorderSide(color: WhatsAppPalette.accentGreen, width: 2.5)),
+                        ),
+                      ),
+                      AppAvatar(name: title, photoUrl: user?.photoUrl, radius: 24),
+                    ],
+                  ),
+                  title: title,
+                  subtitle: subtitle,
+                  trailing: Text(
+                    TimeFormatter.formatChatTime(items.first.createdAt),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFF8696A0) : WhatsAppPalette.subtitleGrey,
+                    ),
+                  ),
+                  isDark: isDark,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => StatusViewerScreen(
+                          ownerName: title,
+                          ownerPhotoUrl: user?.photoUrl,
+                          statuses: items,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => Center(child: Text('Could not load statuses.\n$error')),
     );
   }
 }
