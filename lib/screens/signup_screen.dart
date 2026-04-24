@@ -59,11 +59,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign up')),
-      body: Padding(
+      appBar: AppBar(title: const Text('Create account')),
+      body: ListView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
+        children: [
             TextField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
             const SizedBox(height: 12),
             TextField(
@@ -100,9 +99,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            SizedBox(width: double.infinity, child: FilledButton(onPressed: _loading ? null : _onSignup, child: Text(_loading ? 'Loading...' : 'Create account'))),
-          ],
-        ),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _loading ? null : _onSignup,
+                child: Text(_loading ? 'Please wait…' : 'Create account'),
+              ),
+            ),
+        ],
       ),
     );
   }

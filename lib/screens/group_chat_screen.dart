@@ -5,31 +5,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/theme/whatsapp_palette.dart';
-import '../core/utils/app_logger.dart';
 import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
 import '../features/chat/presentation/viewmodels/chat_view_model.dart';
 import '../models/app_user.dart';
-import '../widgets/app_avatar.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/whatsapp_input_bar.dart';
 
-class ChatScreen extends ConsumerStatefulWidget {
-  final String chatId;
-  final String contactName;
-  final String? contactPhotoUrl;
+class GroupChatScreen extends ConsumerStatefulWidget {
+  final String groupId;
+  final String groupName;
 
-  const ChatScreen({
+  const GroupChatScreen({
     super.key,
-    required this.chatId,
-    required this.contactName,
-    required this.contactPhotoUrl,
+    required this.groupId,
+    required this.groupName,
   });
 
   @override
-  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<GroupChatScreen> createState() => _GroupChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _GroupChatScreenState extends ConsumerState<GroupChatScreen> {
   final _messageController = TextEditingController();
 
   @override
@@ -39,47 +35,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _sendText() async {
-    AppLogger.info('chat_screen', 'Sending text to chatId=${widget.chatId}');
-    await ref.read(chatViewModelProvider).sendText(widget.chatId, _messageController.text);
+    await ref.read(chatViewModelProvider).sendGroupText(widget.groupId, _messageController.text);
     _messageController.clear();
   }
 
   Future<void> _sendImage(ImageSource source) async {
-    AppLogger.info('chat_screen', 'Image picker opened for source=$source');
     final picked = await ImagePicker().pickImage(source: source);
     if (picked == null) return;
-    AppLogger.info('chat_screen', 'Image selected and sending to chatId=${widget.chatId}');
-    await ref.read(chatViewModelProvider).sendImage(widget.chatId, File(picked.path));
+    await ref.read(chatViewModelProvider).sendGroupImage(widget.groupId, File(picked.path));
   }
 
   @override
   Widget build(BuildContext context) {
-    final messagesState = ref.watch(chatMessagesProvider(widget.chatId));
+    final messagesState = ref.watch(groupMessagesProvider(widget.groupId));
     final myUid = ref.watch(chatViewModelProvider).currentUid();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final chatBg = isDark ? WhatsAppPalette.darkChatBg : WhatsAppPalette.chatBackground;
 
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 0,
-        leadingWidth: 32,
-        title: Row(
-          children: [
-            AppAvatar(
-              name: widget.contactName,
-              photoUrl: widget.contactPhotoUrl,
-              radius: 18,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                widget.contactName,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-              ),
-            ),
-          ],
-        ),
+        title: Text(widget.groupName, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(onPressed: () {}, icon: const Icon(Icons.videocam_outlined)),
           IconButton(onPressed: () {}, icon: const Icon(Icons.call_outlined)),
@@ -101,18 +76,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     final isMine = message.senderId == myUid;
                     return FutureBuilder<AppUser?>(
                       future: ref.read(chatListViewModelProvider).userById(message.senderId),
-                      builder: (context, snapshot) => MessageBubble(
-                        message: message,
-                        isMine: isMine,
-                        compact: true,
-                        senderName: snapshot.data?.displayName ?? (isMine ? 'You' : widget.contactName),
-                        senderPhotoUrl: snapshot.data?.photoUrl,
-                      ),
+                      builder: (context, snapshot) {
+                        final sender = snapshot.data;
+                        return MessageBubble(
+                          message: message,
+                          isMine: isMine,
+                          compact: false,
+                          senderName: sender?.displayName ?? (isMine ? 'You' : 'Member'),
+                          senderPhotoUrl: sender?.photoUrl,
+                        );
+                      },
                     );
                   },
                 ),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) => const Center(child: Text('Cannot load messages')),
+                error: (error, stackTrace) => const Center(child: Text('Could not load group messages.')),
               ),
             ),
             WhatsAppInputBar(
