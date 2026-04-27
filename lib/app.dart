@@ -6,8 +6,8 @@ import 'core/theme/whatsapp_palette.dart';
 import 'core/utils/app_logger.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/viewmodels/auth_view_model.dart';
-import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
+import 'presentation/features/chat/screens/home_screen.dart';
+import 'presentation/features/auth/screens/login_screen.dart';
 
 class SmartChatApp extends ConsumerWidget {
   const SmartChatApp({super.key});

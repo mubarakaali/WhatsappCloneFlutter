@@ -3,18 +3,12 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/app_logger.dart';
-import '../../../models/app_user.dart';
+import '../../domain/entities/app_user.dart';
 
-final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository(
-      auth: FirebaseAuth.instance,
-      firestore: FirebaseFirestore.instance,
-      storage: FirebaseStorage.instance,
-    ));
-
+/// Concrete Firebase implementation for auth/profile data.
 class AuthRepository {
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
@@ -53,7 +47,6 @@ class AuthRepository {
   Stream<AppUser> watchCurrentUserProfile() {
     final uid = auth.currentUser?.uid;
     if (uid == null) return const Stream.empty();
-
     return firestore.collection(AppConstants.usersCollection).doc(uid).snapshots().map((doc) => AppUser.fromMap(doc.id, doc.data() ?? <String, dynamic>{}));
   }
 

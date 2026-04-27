@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../core/theme/whatsapp_palette.dart';
+import '../../../core/theme/whatsapp_palette.dart';
 
 class WhatsAppInputBar extends StatelessWidget {
   final TextEditingController controller;

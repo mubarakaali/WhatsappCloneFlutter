@@ -3,15 +3,16 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../models/app_user.dart';
-import '../../data/auth_repository.dart';
+import '../../../../domain/entities/app_user.dart';
+import '../../../../domain/repositories/auth_repository_contract.dart';
+import '../../../../data/repositories/auth_repository.dart';
 
 final authStateProvider = StreamProvider<User?>((ref) => ref.watch(authRepositoryProvider).authStateChanges());
 final authViewModelProvider = Provider<AuthViewModel>((ref) => AuthViewModel(repository: ref.watch(authRepositoryProvider)));
 final currentUserProfileProvider = StreamProvider<AppUser>((ref) => ref.watch(authRepositoryProvider).watchCurrentUserProfile());
 
 class AuthViewModel {
-  final AuthRepository repository;
+  final AuthRepositoryContract repository;
   AuthViewModel({required this.repository});
 
   Future<String?> signUp(String email, String password) async {

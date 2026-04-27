@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
+import '../../../../features/chat/presentation/viewmodels/chat_list_view_model.dart';
 
 class CreateStatusScreen extends ConsumerStatefulWidget {
   const CreateStatusScreen({super.key});

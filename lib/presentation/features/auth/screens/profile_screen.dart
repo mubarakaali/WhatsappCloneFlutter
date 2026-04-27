@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../core/theme/whatsapp_palette.dart';
-import '../core/utils/app_logger.dart';
-import '../features/auth/presentation/viewmodels/auth_view_model.dart';
-import '../widgets/app_avatar.dart';
+import '../../../../core/theme/whatsapp_palette.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../shared/widgets/app_avatar.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});

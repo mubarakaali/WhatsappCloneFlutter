@@ -2,15 +2,19 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../models/chat_message.dart';
-import '../../data/chat_repository.dart';
+import '../../../../domain/entities/chat_message.dart';
+import '../../../../data/repositories/chat_repository.dart';
+import '../../../../domain/repositories/chat_repository_contract.dart';
 
 final chatMessagesProvider = StreamProvider.family<List<ChatMessage>, String>((ref, chatId) => ref.watch(chatRepositoryProvider).watchMessages(chatId));
 final groupMessagesProvider = StreamProvider.family<List<ChatMessage>, String>((ref, groupId) => ref.watch(chatRepositoryProvider).watchGroupMessages(groupId));
 final chatViewModelProvider = Provider<ChatViewModel>((ref) => ChatViewModel(repository: ref.watch(chatRepositoryProvider)));
 
+/// ViewModel for conversation-level user actions.
+///
+/// Keeps UI widgets thin by exposing intent-based methods.
 class ChatViewModel {
-  final ChatRepository repository;
+  final ChatRepositoryContract repository;
   ChatViewModel({required this.repository});
 
   Future<void> sendText(String chatId, String text) => repository.sendTextMessage(chatId: chatId, text: text);

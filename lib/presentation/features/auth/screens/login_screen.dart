@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/theme/whatsapp_palette.dart';
-import '../core/utils/app_logger.dart';
-import '../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../../core/theme/whatsapp_palette.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {

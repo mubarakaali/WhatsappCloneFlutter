@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../core/theme/whatsapp_palette.dart';
-import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
-import '../widgets/app_avatar.dart';
+import '../../../../core/theme/whatsapp_palette.dart';
+import '../../../../features/chat/presentation/viewmodels/chat_list_view_model.dart';
+import '../../../shared/widgets/app_avatar.dart';
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
   const CreateGroupScreen({super.key});

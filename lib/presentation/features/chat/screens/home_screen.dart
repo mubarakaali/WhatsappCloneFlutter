@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/theme/whatsapp_palette.dart';
-import '../core/utils/app_logger.dart';
-import '../core/utils/time_formatter.dart';
-import '../features/auth/presentation/viewmodels/auth_view_model.dart';
-import '../features/chat/presentation/viewmodels/chat_list_view_model.dart';
-import '../models/app_user.dart';
-import '../models/chat_thread.dart';
-import '../models/group_thread.dart';
-import '../models/status_item.dart';
-import '../widgets/app_avatar.dart';
+import '../../../../core/theme/whatsapp_palette.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/utils/time_formatter.dart';
+import '../../../../features/auth/presentation/viewmodels/auth_view_model.dart';
+import '../../../../features/chat/presentation/viewmodels/chat_list_view_model.dart';
+import '../../../../domain/entities/app_user.dart';
+import '../../../../domain/entities/chat_thread.dart';
+import '../../../../domain/entities/group_thread.dart';
+import '../../../../domain/entities/status_item.dart';
+import '../../../shared/widgets/app_avatar.dart';
 import 'chat_screen.dart';
 import 'create_group_screen.dart';
 import 'create_status_screen.dart';
 import 'group_chat_screen.dart';
-import 'profile_screen.dart';
+import '../../auth/screens/profile_screen.dart';
 import 'status_viewer_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -184,10 +184,10 @@ class _ChatsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chatsState = ref.watch(chatsProvider);
+    final AsyncValue<List<ChatThread>> chatsState = ref.watch(chatsProvider);
     final membersState = ref.watch(membersProvider);
-    final vm = ref.watch(chatListViewModelProvider);
-    final searchFill = isDark ? const Color(0xFF2A3942) : WhatsAppPalette.searchFill;
+    final ChatListViewModel vm = ref.watch(chatListViewModelProvider);
+    final Color searchFill = isDark ? const Color(0xFF2A3942) : WhatsAppPalette.searchFill;
 
     return Column(
       children: [

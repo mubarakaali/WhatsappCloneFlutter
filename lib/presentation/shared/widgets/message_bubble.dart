@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
-import '../core/theme/whatsapp_palette.dart';
-import '../core/utils/time_formatter.dart';
-import '../models/chat_message.dart';
+import '../../../core/theme/whatsapp_palette.dart';
+import '../../../core/utils/time_formatter.dart';
+import '../../../domain/entities/chat_message.dart';
 import 'app_avatar.dart';
 
 class MessageBubble extends StatelessWidget {

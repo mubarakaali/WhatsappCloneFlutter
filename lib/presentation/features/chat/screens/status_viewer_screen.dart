@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../models/status_item.dart';
+import '../../../../domain/entities/status_item.dart';
 
 class StatusViewerScreen extends StatelessWidget {
   final String ownerName;
